@@ -1,0 +1,26 @@
+{
+  "name": "blockstack-ledger",
+  "version": "1.0.0",
+  "description": "Simple utility for Blockstack ledger transactions",
+  "main": "index.js",
+  "scripts": {
+    "build": "rm -rf lib; babel src -d lib",
+    "start": "node lib/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Aaron Blankstein <aaron@blankstein.com>",
+  "license": "MIT",
+  "dependencies": {
+    "babel-polyfill": "^6.26.0",
+    "bigi": "^1.4.2",
+    "blockstack": "^18.0.2",
+  },
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-preset-env": "^1.7.0",
+    "babel-preset-flow": "^6.23.0"
+  },
+  "engines": {
+    "node": ">=9"
+  }
+}
