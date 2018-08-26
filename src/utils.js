@@ -105,5 +105,5 @@ function getTransactionBitcoind (txId) {
     headers
   })
     .then(resp => resp.json())
-    .then(json => Buffer.from(json.result, 'hex'))
+    .then(json =>  Buffer.from(json.result, 'hex'))
 }
