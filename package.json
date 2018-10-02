@@ -4,7 +4,7 @@
   "description": "Simple utility for Blockstack ledger transactions",
   "scripts": {
     "build": "rm -rf lib; babel src -d lib",
-    "browserify": "browserify lib/index.js --standalone bsk-trezor -o dist/blockstack-trezor.js",
+    "browserify": "browserify lib/index.js --standalone bsk-ledger -o dist/blockstack-ledger.js",
     "start": "node lib/index.js",
     "test": "eslint src/"
   },
