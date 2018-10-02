@@ -1,13 +1,26 @@
-# Building
+## Usage
 
-This library, unfortunately, depends on _two_ development branches.
+This package implements the `TransactionSigner` interface from blockstack.js
+using Ledger's Bitcoin application.
 
-First: `blockstack.js` from:
+This provides both single-sig and multi-sig signers.
 
-https://github.com/blockstack/blockstack.js/tree/feature/stacks-transactions+aaron
+To use:
 
-Second: @ledgerhq/hw-app-btc from:
+```javascript
+import { LedgerSigner } from 'blockstack-ledger'
+import bsk from 'blockstack'
+import Transport from '@ledgerhq/hw-transport-node-hid'
 
-https://github.com/kantai/ledgerjs/tree/master
+const signer = new LedgerSigner(`m/44'/88'/0'/0/1`, Transport)
+bsk.makeTokenTransfer(recipientAddress, 'STACKS', BigInteger.fromHex('10'), '', signer)
+    .then((signedTX) => ...)
+```
 
-You will need to build both of those and npm link them for this library to work.
+## Building
+
+This library, unfortunately, depends on a _fork_ of the Ledger Bitcoin API. This is because the original
+API does not expose the ability to sign a subset of inputs in the transaction (e.g., if you want a transaction
+to have three inputs, where only one of the inputs is signed by the Ledger, but the other inputs are signed by other
+parties).
+
