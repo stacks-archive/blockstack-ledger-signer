@@ -1,5 +1,6 @@
-const bsk = require('blockstack')
+import bsk from 'blockstack'
 import varuint from 'varuint-bitcoin'
+import fetch from 'cross-fetch'
 
 const KNOWN_TX_MAP = {}
 
@@ -65,13 +66,19 @@ export function serializeOutputHex(tx) {
   const buffer = Buffer.alloc(byteLength, 0)
 
   let offset = 0
-  function writeSlice (slice) { offset += slice.copy(buffer, offset) }
-  function writeUInt64 (i) { offset = writeUInt64LE(buffer, i, offset) }
+  function writeSlice (slice) {
+    offset += slice.copy(buffer, offset)
+  }
+  function writeUInt64 (i) {
+    offset = writeUInt64LE(buffer, i, offset)
+  }
   function writeVarInt (i) {
     varuint.encode(i, buffer, offset)
     offset += varuint.encode.bytes
   }
-  function writeVarSlice (slice) { writeVarInt(slice.length); writeSlice(slice) }
+  function writeVarSlice (slice) {
+    writeVarInt(slice.length); writeSlice(slice)
+  }
 
   writeVarInt(tx.outs.length)
   tx.outs.forEach(function (txOut) {

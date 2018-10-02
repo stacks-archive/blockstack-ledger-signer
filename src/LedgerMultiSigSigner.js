@@ -1,10 +1,8 @@
-const bsk = require('blockstack')
+import bsk from 'blockstack'
 import btc from 'bitcoinjs-lib'
-import Transport from '@ledgerhq/hw-transport-node-hid'
-import AppBtc from '@ledgerhq/hw-app-btc'
+import AppBtc from 'ablankstein-ledger-hw-app-btc'
 
-import { getTransaction, pathToPathArray,
-         getCoinName, serializeOutputHex } from './utils'
+import { getTransaction, serializeOutputHex } from './utils'
 
 class MockKeyPair {
   constructor(signature: Buffer, publicKey: Buffer) {

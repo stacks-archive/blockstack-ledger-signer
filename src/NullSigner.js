@@ -8,7 +8,7 @@ export class NullSigner {
     return Promise.resolve(this.address)
   }
 
-  signTransaction(txB, signInputIndex) {
+  signTransaction(txB) {
     this.txB = txB
   }
 
