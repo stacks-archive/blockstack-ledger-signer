@@ -18,14 +18,15 @@ class MockKeyPair {
 }
 
 export class LedgerMultiSigSigner {
-  constructor(hdPath: string, redeemScript: string) {
+  constructor(hdPath: string, redeemScript: string, transportInterface: object) {
+    this.transportInterface = transportInterface
     this.hdPath = hdPath
     this.redeemScript = Buffer.from(redeemScript, 'hex')
     this.publicKey
   }
 
-  static obtainAppInterface() {
-    return Transport.create()
+  obtainAppInterface() {
+    return this.transportInterface.create()
       .then((transport) => new AppBtc(transport))
   }
 
@@ -33,7 +34,7 @@ export class LedgerMultiSigSigner {
     if (this.publicKey) {
       return Promise.resolve(this.publicKey)
     } else {
-      return LedgerMultiSigSigner.obtainAppInterface()
+      return this.obtainAppInterface()
         .then(device => device.getWalletPublicKey(this.hdPath, false, false))
         .then(result => result.publicKey)
         .then(publicKey => {
@@ -114,7 +115,7 @@ export class LedgerMultiSigSigner {
   }
 
   signTransactionSkeleton(tx, signInputIndex) {
-    return LedgerMultiSigSigner.obtainAppInterface()
+    return this.obtainAppInterface()
       .then((appBtc) => this.prepareTransactionInfo(tx, signInputIndex, appBtc)
             .then((txInfo) => {
               return appBtc.signP2SHTransaction(

@@ -143,6 +143,7 @@ function runMultiSigTest() {
   getMultiSigInfo()
     .then((info) => {
       console.log(`Ledger Addresses:\n ${JSON.stringify(info.address, undefined, 2)}`)
+      console.log(`Ledger Addresses:\n ${JSON.stringify(info.redeemScript, undefined, 2)}`)
       return doMakeStacksTransferMulti('miiprdeiQ72wpm4s5nfagmR2AzGqYfPmPT', info.address.multiSigAddress)
         .then(rawTX => signTransactionMore(rawTX, 0, MULTI_2, info.redeemScript))
         .then(signedOnce => signTransactionMore(signedOnce, 0, MULTI_1, info.redeemScript))

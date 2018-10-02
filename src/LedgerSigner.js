@@ -7,13 +7,14 @@ import { getTransaction, pathToPathArray,
          getCoinName, serializeOutputHex } from './utils'
 
 export class LedgerSigner {
-  constructor(hdPath) {
+  constructor(hdPath, transportInterface) {
     this.hdPath = hdPath
+    this.transportInterface = transportInterface
     this.address = null
   }
 
-  static obtainAppInterface() {
-    return Transport.create()
+  obtainAppInterface() {
+    return this.transportInterface.create()
       .then((transport) => new AppBtc(transport))
   }
 
@@ -21,7 +22,7 @@ export class LedgerSigner {
     if (this.address) {
       return Promise.resolve(this.address)
     } else {
-      return LedgerSigner.obtainAppInterface()
+      return this.obtainAppInterface()
         .then(device => device.getWalletPublicKey(this.hdPath, false, false))
         .then(result => {
           this.address = bsk.config.network.coerceAddress(result.bitcoinAddress)
@@ -81,7 +82,7 @@ export class LedgerSigner {
   }
 
   signTransactionSkeleton(tx, signInputIndex) {
-    return LedgerSigner.obtainAppInterface()
+    return this.obtainAppInterface()
       .then((appBtc) => this.prepareTransactionInfo(tx, signInputIndex, appBtc)
             .then((txInfo) => {
               return appBtc.createPaymentTransactionNew(
