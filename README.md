@@ -24,3 +24,12 @@ API does not expose the ability to sign a subset of inputs in the transaction (e
 to have three inputs, where only one of the inputs is signed by the Ledger, but the other inputs are signed by other
 parties).
 
+## Testing
+
+Until I can figure out how to get the APDU mocking working correctly with ledgerjs, you'll need a device to
+test with. That device should be initialized with this seed phrase:
+
+```
+taste wrap bright morning legend across favorite brother post umbrella cage erase
+```
+

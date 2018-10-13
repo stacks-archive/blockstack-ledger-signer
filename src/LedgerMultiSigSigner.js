@@ -1,8 +1,9 @@
-import bsk from 'blockstack'
+import { config as bskConfig } from 'blockstack'
 import btc from 'bitcoinjs-lib'
 import AppBtc from 'ablankstein-ledger-hw-app-btc'
 
 import { getTransaction, serializeOutputHex } from './utils'
+import { LedgerSigner } from './LedgerSigner'
 
 class MockKeyPair {
   constructor(signature: Buffer, publicKey: Buffer) {
@@ -20,7 +21,7 @@ export class LedgerMultiSigSigner {
     this.transportInterface = transportInterface
     this.hdPath = hdPath
     this.redeemScript = Buffer.from(redeemScript, 'hex')
-    this.publicKey
+    this.publicKey = undefined
   }
 
   obtainAppInterface() {
@@ -32,17 +33,11 @@ export class LedgerMultiSigSigner {
     if (this.publicKey) {
       return Promise.resolve(this.publicKey)
     } else {
-      return this.obtainAppInterface()
-        .then(device => device.getWalletPublicKey(this.hdPath, false, false))
-        .then(result => result.publicKey)
-        .then(publicKey => {
-          const ecPair = btc.ECPair.fromPublicKey(Buffer.from(publicKey, 'hex'))
-          ecPair.compressed = true
-          return ecPair.publicKey
-        })
-        .then(publicKeyBuffer => {
-          this.publicKey = publicKeyBuffer
-          return this.publicKey
+      return LedgerSigner.getPublicKeys(this.transportInterface, [this.hdPath])
+        .then(pubkeys => Buffer.from(pubkeys[0], 'hex'))
+        .then(pkBuffer => {
+          this.publicKey = pkBuffer
+          return pkBuffer
         })
     }
   }
@@ -50,7 +45,7 @@ export class LedgerMultiSigSigner {
   getAddress() {
     const p2ms = btc.payments.p2ms({ output: this.redeemScript })
     const p2sh = btc.payments.p2sh({ redeem: p2ms })
-    return Promise.resolve(bsk.config.network.coerceAddress(p2sh.address))
+    return Promise.resolve(bskConfig.network.coerceAddress(p2sh.address))
   }
 
   prepareInputs(tx, signInputIndex, appBtc) {
@@ -67,7 +62,10 @@ export class LedgerMultiSigSigner {
       const outputN = input.index
       const redeemScript = (index === signInputIndex) ? this.redeemScript.toString('hex') : undefined
       return getTransaction(txId)
-        .then((transaction) => appBtc.splitTransaction(transaction))
+        .then((transaction) => {
+          const hasWitness = btc.Transaction.fromHex(transaction).hasWitnesses()
+          return appBtc.splitTransaction(transaction, hasWitness)
+        })
         .then((preparedTx) => ([ preparedTx, outputN, redeemScript, input.sequence ]))
     })
 
@@ -107,6 +105,7 @@ export class LedgerMultiSigSigner {
             const sigBuffer = Buffer.from(signaturesHex[0] + '01', 'hex')
             const decompiled = btc.script.signature.decode(sigBuffer)
             const signer = new MockKeyPair(decompiled.signature, publicKey)
+            console.log(decompiled.signature.toString('hex'))
             txB.sign(signInputIndex, signer, this.redeemScript)
           })
       })

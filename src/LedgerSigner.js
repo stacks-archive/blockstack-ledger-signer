@@ -1,4 +1,4 @@
-import bsk from 'blockstack'
+import { config as bskConfig } from 'blockstack'
 import btc from 'bitcoinjs-lib'
 import AppBtc from 'ablankstein-ledger-hw-app-btc'
 
@@ -16,6 +16,31 @@ export class LedgerSigner {
       .then((transport) => new AppBtc(transport))
   }
 
+  // Return the public key string
+  static getPublicKeys(transportInterface, paths) {
+    const results = []
+    return transportInterface.create()
+      .then((transport) => new AppBtc(transport))
+      .then(ledger => {
+        return paths.reduce(
+            (promise, path) => promise.then((prior) => {
+              if (prior) {
+                results.push(prior)
+              }
+              return ledger.getWalletPublicKey(path, false, false)
+            }), Promise.resolve())
+          .then((finalResult) => results.push(finalResult))
+      })
+      .then(() => results.map(
+        result => {
+          const uncompressed = result.publicKey
+          const ecPair = btc.ECPair.fromPublicKey(Buffer.from(uncompressed, 'hex'))
+          ecPair.compressed = true
+          return ecPair.publicKey
+        }))
+      .then(pubkeyBuffers => pubkeyBuffers.map(pk => pk.toString('hex')))
+  }
+
   getAddress() {
     if (this.address) {
       return Promise.resolve(this.address)
@@ -23,7 +48,7 @@ export class LedgerSigner {
       return this.obtainAppInterface()
         .then(device => device.getWalletPublicKey(this.hdPath, false, false))
         .then(result => {
-          this.address = bsk.config.network.coerceAddress(result.bitcoinAddress)
+          this.address = bskConfig.network.coerceAddress(result.bitcoinAddress)
           return this.address
         })
     }
@@ -42,7 +67,10 @@ export class LedgerSigner {
       const txId = Buffer.from(input.hash).reverse().toString('hex')
       const outputN = input.index
       return getTransaction(txId)
-        .then((transaction) => appBtc.splitTransaction(transaction))
+        .then((transaction) => {
+          const hasWitness = btc.Transaction.fromHex(transaction).hasWitnesses()
+          return appBtc.splitTransaction(transaction, hasWitness)
+        })
         .then((preparedTx) => ([ preparedTx, outputN, undefined, input.sequence ]))
     })
 

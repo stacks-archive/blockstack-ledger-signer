@@ -1,11 +1,22 @@
-import bsk from 'blockstack'
+import btc from 'bitcoinjs-lib'
+import { config as bskConfig } from 'blockstack'
 import varuint from 'varuint-bitcoin'
-import fetch from 'cross-fetch'
+import 'cross-fetch/polyfill'
 
 const KNOWN_TX_MAP = {}
 
+export function getMultiSigInfo(publicKeys, signersRequired) {
+  const redeem = btc.payments.p2ms({ m: signersRequired, pubkeys: publicKeys })
+  const script = btc.payments.p2sh({ redeem })
+  const address = script.address
+  return {
+    address: bskConfig.network.coerceAddress(address),
+    redeemScript: redeem.output.toString('hex')
+  }
+}
+
 export function getCoinName() {
-  const network = bsk.config.network.layer1
+  const network = bskConfig.network.layer1
   if (network.pubKeyHash === 0) {
     return 'bitcoin'
   } else if (network.pubKeyHash === 111) {
@@ -94,8 +105,8 @@ export function serializeOutputHex(tx) {
 }
 
 function getTransactionBitcoind (txId) {
-  const bitcoindUrl = bsk.config.network.btc.bitcoindUrl
-  const bitcoindCredentials = bsk.config.network.btc.bitcoindCredentials
+  const bitcoindUrl = bskConfig.network.btc.bitcoindUrl
+  const bitcoindCredentials = bskConfig.network.btc.bitcoindCredentials
 
   const jsonRPC = {
     jsonrpc: '1.0',
