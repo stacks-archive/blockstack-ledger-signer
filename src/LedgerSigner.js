@@ -9,11 +9,20 @@ export class LedgerSigner {
     this.hdPath = hdPath
     this.transportInterface = transportInterface
     this.address = null
+    this.transport = null
   }
 
   obtainAppInterface() {
-    return this.transportInterface.create()
-      .then((transport) => new AppBtc(transport))
+    if (this.transport) {
+      return Promise.resolve(this.transport)
+    } else {
+      return this.transportInterface.create()
+        .then((transport) => {
+          transport = new AppBtc(transport)
+          this.transport = transport
+          return transport
+        })
+    }
   }
 
   // Return the public key string
