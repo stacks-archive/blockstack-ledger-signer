@@ -1,6 +1,7 @@
 import { config as bskConfig } from 'blockstack'
 import btc from 'bitcoinjs-lib'
 import AppBtc from 'ablankstein-ledger-hw-app-btc'
+import ReadWriteLock from 'rwlock'
 
 import { getTransaction, serializeOutputHex } from './utils'
 import { LedgerSigner } from './LedgerSigner'
@@ -22,22 +23,49 @@ export class LedgerMultiSigSigner {
     this.hdPath = hdPath
     this.redeemScript = Buffer.from(redeemScript, 'hex')
     this.publicKey = undefined
+    this.lock = new ReadWriteLock()
+    this.transportObtained = null
   }
 
   obtainAppInterface() {
-    return this.transportInterface.create()
-      .then((transport) => new AppBtc(transport))
+    return new Promise((resolve) => {
+      this.lock.writeLock((release) => {
+        return this.transportInterface.create()
+        .then((transport) => {
+          this.transportObtained = { transport, release }
+          resolve(new AppBtc(transport))
+        })
+      })
+    })
+  }
+
+  closeInterface() {
+    if (! this.transportObtained) {
+      throw new Error('Tried to close unopened interface')
+    }
+    this.transportObtained.transport.close()
+    this.transportObtained.release()
   }
 
   getPublicKey(): Promise<Buffer> {
     if (this.publicKey) {
       return Promise.resolve(this.publicKey)
     } else {
-      return LedgerSigner.getPublicKeys(this.transportInterface, [this.hdPath])
+      return this.obtainAppInterface()
+        .then(appInterface =>
+              LedgerSigner.getPublicKeys(appInterface, [this.hdPath]))
+        .then(x => {
+          this.closeInterface()
+          return x
+        })
         .then(pubkeys => Buffer.from(pubkeys[0], 'hex'))
         .then(pkBuffer => {
           this.publicKey = pkBuffer
           return pkBuffer
+        })
+        .catch(err => {
+          this.closeInterface()
+          throw err
         })
     }
   }
@@ -124,7 +152,12 @@ export class LedgerMultiSigSigner {
                 false,
                 1)
             }))
+      .then(x => {
+        this.closeInterface()
+        return x
+      })
       .catch(err => {
+        this.closeInterface()
         console.log(err)
         console.log(err.stack)
         console.log(err.message)

@@ -1,6 +1,7 @@
 import { config as bskConfig } from 'blockstack'
 import btc from 'bitcoinjs-lib'
 import AppBtc from 'ablankstein-ledger-hw-app-btc'
+import ReadWriteLock from 'rwlock'
 
 import { getTransaction, serializeOutputHex } from './utils'
 
@@ -9,18 +10,43 @@ export class LedgerSigner {
     this.hdPath = hdPath
     this.transportInterface = transportInterface
     this.address = null
+    this.lock = new ReadWriteLock()
+    this.transportObtained = null
   }
 
   obtainAppInterface() {
-    return this.transportInterface.create()
-      .then((transport) => new AppBtc(transport))
+    return new Promise((resolve) => {
+      this.lock.writeLock((release) => {
+        return this.transportInterface.create()
+        .then((transport) => {
+          this.transportObtained = { transport, release }
+          resolve(new AppBtc(transport))
+        })
+      })
+    })
+  }
+
+  closeInterface() {
+    if (! this.transportObtained) {
+      throw new Error('Tried to close unopened interface')
+    }
+    this.transportObtained.transport.close()
+    this.transportObtained.release()
   }
 
   // Return the public key string
-  static getPublicKeys(transportInterface, paths) {
+  static getPublicKeys(appInterfaceOrTransport, paths) {
     const results = []
-    return transportInterface.create()
-      .then((transport) => new AppBtc(transport))
+
+    let interfacePromise
+    if (appInterfaceOrTransport.create) {
+      interfacePromise = appInterfaceOrTransport.create()
+        .then((transport) => new AppBtc(transport))
+    } else {
+      interfacePromise = Promise.resolve(appInterfaceOrTransport)
+    }
+
+    return interfacePromise
       .then(ledger => {
         return paths.reduce(
             (promise, path) => promise.then((prior) => {
@@ -47,9 +73,17 @@ export class LedgerSigner {
     } else {
       return this.obtainAppInterface()
         .then(device => device.getWalletPublicKey(this.hdPath, false, false))
+        .then(x => {
+          this.closeInterface()
+          return x
+        })
         .then(result => {
           this.address = bskConfig.network.coerceAddress(result.bitcoinAddress)
           return this.address
+        })
+        .catch(err => {
+          this.closeInterface()
+          throw err
         })
     }
   }
@@ -124,7 +158,12 @@ export class LedgerSigner {
                 undefined,
                 txInfo.inputScripts)
             }))
+      .then(x => {
+        this.closeInterface()
+        return x
+      })
       .catch(err => {
+        this.closeInterface()
         console.log(err)
         console.log(err.stack)
         console.log(err.message)
