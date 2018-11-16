@@ -1,6 +1,6 @@
 {
   "name": "blockstack-ledger",
-  "version": "0.9.5",
+  "version": "0.9.6",
   "description": "Simple utility for Blockstack ledger transactions",
   "scripts": {
     "prepublishOnly": "npm run build",
